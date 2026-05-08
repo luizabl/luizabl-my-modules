@@ -63,6 +63,8 @@ except Exception as erro:
 
 __version__ = "1.0.0"
 
+_CLASS_MSG_APP_NAME = os.environ.get("CLASS_MSG_APP_NAME", "")
+
 
 class id_msg:
     """Identifica um ponto de chamada de exception e define a frequência mínima de envio via servidor_msgs."""
@@ -158,7 +160,16 @@ class Class_Mensagem_Log():
             raise Exception("O módulo Pushbullet não foi importado")
         self.__servidor_msgs_pushbullet.PushbulletSet(Pushbullet_API_KEY, IntervaloMinimo_seg)
 
-    def servidor_msgs_SendMsg(self, titulo: str, msg: str, motivo: str = None, ForcarEnvio: bool = False):
+    def _formatar_msg_servidor(self, titulo: str, msg: str, id: 'id_msg') -> str:
+        partes = []
+        if _CLASS_MSG_APP_NAME:
+            partes.append(f"[{_CLASS_MSG_APP_NAME}]")
+        partes.append(f"[{titulo}]")
+        partes.append(str(msg))
+        partes.append(f"[{id.id()}]")
+        return "\n".join(partes)
+
+    def servidor_msgs_SendMsg(self, msg: str, ForcarEnvio: bool = False):
         ''' Envia uma mensagem via servidor de mensagens. Prioriza Telegram; usa Pushbullet como fallback '''
         if (time.time() - Class_Mensagem_Log.SERVIDOR_MSGS_ultima_msg_enviada_time
                 <= Class_Mensagem_Log.SERVIDOR_MSGS_tempo_minimo_entre_envios_s):
@@ -170,7 +181,7 @@ class Class_Mensagem_Log():
         if (TELEGRAM_IMPORTADO and self.__servidor_msgs_telegram is not None
                 and self.__servidor_msgs_telegram.TelegramIsSet()):
             try:
-                self.__servidor_msgs_telegram.TelegramSendMsg(titulo, msg, motivo, ForcarEnvio)
+                self.__servidor_msgs_telegram.TelegramSendMsg(msg, ForcarEnvio)
                 return
             except Exception:
                 pass  # cai no fallback
@@ -179,7 +190,7 @@ class Class_Mensagem_Log():
         if (PUSHBULLET_IMPORTADO and self.__servidor_msgs_pushbullet is not None
                 and self.__servidor_msgs_pushbullet.PushbulletIsSet()):
             try:
-                self.__servidor_msgs_pushbullet.PushbulletSendMsg(titulo, msg, motivo, ForcarEnvio)
+                self.__servidor_msgs_pushbullet.PushbulletSendMsg(msg, ForcarEnvio)
             except Exception as e:
                 if (e.args[0].find("pushbullet_pro_required") >= 0):
                     # Extrapolou o limite de envios mensais do pushbullet — desabilita
@@ -341,13 +352,13 @@ class Class_Mensagem_Log():
                 if (ultimo is None or
                         (agora - ultimo).total_seconds() >= id.frequencia_seg):
                     self.servidor_msgs_SendMsg(
-                        "[EXCEPTION] " + self.logger.name,
-                        str(msg), "exception", ForcarEnvioServidorMsgs)
+                        self._formatar_msg_servidor("EXCEPTION", msg, id),
+                        ForcarEnvioServidorMsgs)
                     Class_Mensagem_Log.ultimo_envio_msg_exception_ids[key] = agora
             else:
                 self.servidor_msgs_NotSetedMsError(False)
 
-    def critical(self, msg, EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
+    def critical(self, msg, id: 'id_msg', EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
         """ Mostra uma mensagem de erro CRITICAL. O programa não continuará a tarefa.
         CRITICAL é um problema gerado provavelmente porque algo inesperado aconteceu.
 
@@ -363,11 +374,11 @@ class Class_Mensagem_Log():
 
         if(EnviarServidorMsgs):
             if self.servidor_msgs_IsSet():
-                self.servidor_msgs_SendMsg("[CRITICAL] "+self.logger.name, str(msg), "critical", ForcarEnvioServidorMsgs)
+                self.servidor_msgs_SendMsg(self._formatar_msg_servidor("CRITICAL", msg, id), ForcarEnvioServidorMsgs)
             else:
                 self.servidor_msgs_NotSetedMsError()
 
-    def erro(self, msg, EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
+    def erro(self, msg, id: 'id_msg', EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
         """ Mostra uma mensagem de ERRO. O programa não continuará a tarefa.
         ERRO é um problema gerado devido ao mal uso do programa pelo usuário.
         Por exemplo o usuário coloca uma string vazia em um formulário que deveria ter uma string preenchida.
@@ -384,11 +395,11 @@ class Class_Mensagem_Log():
         self.logger.error(msg)
         if(EnviarServidorMsgs):
             if self.servidor_msgs_IsSet():
-                self.servidor_msgs_SendMsg("[ERRO] "+self.logger.name, str(msg), "erro", ForcarEnvioServidorMsgs)
+                self.servidor_msgs_SendMsg(self._formatar_msg_servidor("ERRO", msg, id), ForcarEnvioServidorMsgs)
             else:
                 self.servidor_msgs_NotSetedMsError()
 
-    def warning(self, msg, EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
+    def warning(self, msg, id: 'id_msg', EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
         """ Mostra uma mensagem de WARNING.
         WARNING é um alerta.
         Diferente do ERRO e do CRITICAL, o programa continuará a realizar a tarefa e irá gerar um resultado.
@@ -409,11 +420,11 @@ class Class_Mensagem_Log():
 
         if(EnviarServidorMsgs):
             if self.servidor_msgs_IsSet():
-                self.servidor_msgs_SendMsg("[WARNING] "+self.logger.name, str(msg), "warning", ForcarEnvioServidorMsgs)
+                self.servidor_msgs_SendMsg(self._formatar_msg_servidor("WARNING", msg, id), ForcarEnvioServidorMsgs)
             else:
                 self.servidor_msgs_NotSetedMsError()
 
-    def info(self, msg, EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
+    def info(self, msg, id: 'id_msg', EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
         """ Mostra uma mensagem de INFO.
         INFO é uma mensagem de aviso ao usuário.
         Diferente do WARNING, não se espera nenhuma especificidade no resultado que será/foi gerado
@@ -431,11 +442,11 @@ class Class_Mensagem_Log():
         self.logger.info(msg)
         if(EnviarServidorMsgs):
             if self.servidor_msgs_IsSet():
-                self.servidor_msgs_SendMsg("[INFO] "+self.logger.name, str(msg), "info", ForcarEnvioServidorMsgs)
+                self.servidor_msgs_SendMsg(self._formatar_msg_servidor("INFO", msg, id), ForcarEnvioServidorMsgs)
             else:
                 self.servidor_msgs_NotSetedMsError()
 
-    def debug(self, msg, EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
+    def debug(self, msg, id: 'id_msg', EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
         """ Mostra uma mensagem de DEBUG.
         DEBUG é uma mensagem de aviso ao desenvolvedor do programa.
         Diferente do INFO, a mensagem não é mostrada ao usuário, só se o programa estiver rodando em modo DEBUG.
@@ -454,7 +465,7 @@ class Class_Mensagem_Log():
 
         if(EnviarServidorMsgs):
             if self.servidor_msgs_IsSet():
-                self.servidor_msgs_SendMsg("[DEBUG] "+self.logger.name, str(msg), "debug", ForcarEnvioServidorMsgs)
+                self.servidor_msgs_SendMsg(self._formatar_msg_servidor("DEBUG", msg, id), ForcarEnvioServidorMsgs)
             else:
                 self.servidor_msgs_NotSetedMsError()
 
