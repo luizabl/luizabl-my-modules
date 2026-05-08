@@ -22,8 +22,8 @@ __version__ = "1.0.0"
 
 class Pushbullet_Class():
     '''
-    Clesse usada para enviar mensagens pushbullet
-    Também faz o controle da frequencia de envio
+    Classe usada para enviar mensagens pushbullet.
+    Faz o controle global da frequência de envio (independente de motivo).
     '''
     logger = logging.getLogger(__name__)
     if (DebugModeTester.__debug_mode__):
@@ -35,7 +35,7 @@ class Pushbullet_Class():
 
         self.__Pushbulletmotor = None
         self.__Pushbulletmotor_config = None
-        self.__Pushbulletmotor_UltimoEnvio = {}
+        self.__Pushbulletmotor_UltimoEnvio = dt.datetime(1, 1, 1)
 
         self.__Pushbulletmotor_enviou_mensagem_alerta_nao_configurado = False
 
@@ -65,17 +65,16 @@ class Pushbullet_Class():
 
         Se não for definida uma API_KEY, não serão enviadas as mensagens via pushbullet
 
-        Também define o intervalo mínimo entre o envio de pushbullet para o celular, com no mínimo 1seg.
+        Também define o intervalo mínimo global entre envios de pushbullet, com no mínimo 1seg.
 
         Se não foi passado uma API_KEY para o logger Root, será passada a primeira API_KEY que for definida também para o Root
 
         '''
 
         if (IntervaloMinimo_seg<1):
-            raise ValueError("O interva;lo mínimo entre os envios de pushbullet deve ser de pelo menos 1 segundo")
+            raise ValueError("O intervalo mínimo entre os envios de pushbullet deve ser de pelo menos 1 segundo")
 
-        data_zero = dt.datetime(1,1,1)
-        self.__Pushbulletmotor_UltimoEnvio = {"exception":data_zero,"critical":data_zero,"erro":data_zero,"warning":data_zero,"info":data_zero,"debug":data_zero}
+        self.__Pushbulletmotor_UltimoEnvio = dt.datetime(1, 1, 1)
         self.__Pushbulletmotor_config = {"IntervaloMinimo_seg":IntervaloMinimo_seg}
 
         if (Pushbullet_API_KEY is not None):
@@ -85,47 +84,25 @@ class Pushbullet_Class():
                 self.__Pushbulletmotor = Pushbullet(Pushbullet_API_KEY)
 
 
-    def PushbulletUltimoEnvioGet(self):
-        ''' Retorna o motivo do ultimo envio do Pushbullet, ou "" se não houve envio '''
-        if self.__Pushbulletmotor is None:
-            return ""
-
-        UltimoEnvio = max(self.__Pushbulletmotor_UltimoEnvio, key=lambda chave: self.__Pushbulletmotor_UltimoEnvio[chave])
-
-        data_zero = dt.datetime(0,0,0)
-        if (self.__Pushbulletmotor_UltimoEnvio[UltimoEnvio]==data_zero):
-            return ""
-        else:
-            return UltimoEnvio
-
-    def PushbulletSendMsg(self,titulo:str,msg:str,motivo:str=None,ForcarEnvio:bool=False):
-        ''' Envia uma mensagem via pushbullet para o celular desde que passado o tempo self.__Pushbulletmotor_config["IntervaloMinimo_seg"]
-        desde o ultimo envio daquele motivo.
-
-        motivo pode ser qualquer string que identifique o motivo do envio da mensagem para evitar que fique enviando com muita frequencia a
-        mesma mensagem
-
+    def PushbulletSendMsg(self, msg: str, ForcarEnvio: bool = False):
+        ''' Envia uma mensagem via pushbullet para o celular desde que passado o tempo
+        self.__Pushbulletmotor_config["IntervaloMinimo_seg"] desde o último envio
+        (controle global, independente de motivo).
         '''
         if (self.__Pushbulletmotor is not None):
 
             if (type(msg) != str):
                 raise TypeError("A mensagem deve ser uma string")
 
-            if (motivo is None):
-                raise ValueError("O motivo do envio da mensagem não pode ser vazio")
-
-            if (motivo not in self.__Pushbulletmotor_UltimoEnvio):
-                self.__Pushbulletmotor_UltimoEnvio[motivo] = dt.datetime(1,1,1)
-
-            SegundosDesteUltimoEnvio = (dt.datetime.now() - self.__Pushbulletmotor_UltimoEnvio[motivo]).total_seconds()
+            SegundosDesteUltimoEnvio = (dt.datetime.now() - self.__Pushbulletmotor_UltimoEnvio).total_seconds()
 
             if (SegundosDesteUltimoEnvio>=self.__Pushbulletmotor_config["IntervaloMinimo_seg"] or ForcarEnvio):
                 try:
-                    self.__Pushbulletmotor.push_note(titulo,msg)
+                    self.__Pushbulletmotor.push_note("", msg)
                 except:
                     sleep(5)
-                    self.__Pushbulletmotor.push_note(titulo,msg)
-                self.__Pushbulletmotor_UltimoEnvio[motivo] = dt.datetime.now()
+                    self.__Pushbulletmotor.push_note("", msg)
+                self.__Pushbulletmotor_UltimoEnvio = dt.datetime.now()
         elif not self.__Pushbulletmotor_enviou_mensagem_alerta_nao_configurado:
             self.logger.critical("Não foi configurada nenhuma Pushbullet API_KEY! Não serão enviados alertas via pushbullet!")
             self.__Pushbulletmotor_enviou_mensagem_alerta_nao_configurado = True
