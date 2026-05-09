@@ -63,19 +63,21 @@ except Exception as erro:
 
 __version__ = "1.0.0"
 
+from .enum_timeframes import PERIOD_H1
+
 _CLASS_MSG_APP_NAME = os.environ.get("CLASS_MSG_APP_NAME", "")
 
 
 class id_msg:
     """Identifica um ponto de chamada de exception e define a frequência mínima de envio via servidor_msgs."""
 
-    def __init__(self, frequencia_seg: int, line=None, file=None, function=None):
+    def __init__(self, frequencia_seg: int = 0, line=None, file=None, function=None):
         if frequencia_seg is None:
             raise ValueError("frequencia_seg cannot be None")
         if not isinstance(frequencia_seg, int):
             raise ValueError("frequencia_seg must be an int")
-        if frequencia_seg <= 0:
-            raise ValueError("frequencia_seg must be > 0")
+        if frequencia_seg < 0:
+            raise ValueError("frequencia_seg must be >= 0")
         if (line is not None) and (file is None):
             raise ValueError("line requires file")
         if (file is not None) and (line is None):
@@ -329,10 +331,29 @@ class Class_Mensagem_Log():
         #3- Marcando para o logger que existe um painel de texto para serem mostradas as mensagens
         self.QStatusBar_connected = True
 
-    def exception(self, msg: str, id: 'id_msg', EnviarServidorMsgs=True, ForcarEnvioServidorMsgs=False):
-        """ Mostra uma mensagem de exception """
-        if not isinstance(id, id_msg):
+    def exception(self, msg: str, id: 'id_msg' = None, EnviarServidorMsgs=True, ForcarEnvioServidorMsgs=False):
+        """Loga uma exception com envio automático ao servidor de mensagens.
+
+        - id: identificador do ponto de chamada. Se omitido, capturado automaticamente com frequencia=PERIOD_H1.
+        - Se id.frequencia_seg < PERIOD_H1, a frequência é ignorada e substituída por PERIOD_H1 (mínima aceita);
+          um warning é emitido no log e enviado ao servidor.
+        - EnviarServidorMsgs: se True (padrão), envia ao servidor respeitando a frequência mínima.
+        - msg pode ser uma string ou um dataframe.
+        """
+        if id is None:
+            frame = inspect.currentframe().f_back
+            id = id_msg(frequencia_seg=PERIOD_H1, line=frame.f_lineno, file=frame.f_code.co_filename)
+        elif not isinstance(id, id_msg):
             raise TypeError("id must be an instance of id_msg")
+
+        if id.frequencia_seg < PERIOD_H1:
+            aviso = (f"[exception] frequencia_seg={id.frequencia_seg}s é menor que o mínimo aceitável "
+                     f"({PERIOD_H1}s = 1h). Frequência será ignorada e substituída por PERIOD_H1. [{id.id()}]")
+            self.logger.warning(aviso)
+            if self.servidor_msgs_IsSet():
+                self.servidor_msgs_SendMsg(aviso)
+
+        freq_efetiva = max(id.frequencia_seg, PERIOD_H1)
 
         if self.QTextBrowser_connected:
             agora = dt.datetime.now()
@@ -350,7 +371,7 @@ class Class_Mensagem_Log():
                 agora = dt.datetime.now()
                 ultimo = Class_Mensagem_Log.ultimo_envio_msg_exception_ids.get(key)
                 if (ultimo is None or
-                        (agora - ultimo).total_seconds() >= id.frequencia_seg):
+                        (agora - ultimo).total_seconds() >= freq_efetiva):
                     self.servidor_msgs_SendMsg(
                         self._formatar_msg_servidor("EXCEPTION", msg, id),
                         ForcarEnvioServidorMsgs)
@@ -400,17 +421,14 @@ class Class_Mensagem_Log():
                 self.servidor_msgs_NotSetedMsError()
 
     def warning(self, msg, id: 'id_msg', EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
-        """ Mostra uma mensagem de WARNING.
-        WARNING é um alerta.
-        Diferente do ERRO e do CRITICAL, o programa continuará a realizar a tarefa e irá gerar um resultado.
+        """Loga um alerta: situação não ideal, mas o processamento continua e gera resultado.
 
-        Indica que o algo não aconteceu conforme o ideal. Orienta o usuário sobre especificidade do resultado que será gerado.
+        Uso: linhas ignoradas em CSV com erros, CPFs com dígito inválido descartados etc.
+        Diferente de ERRO e CRITICAL, o programa entrega um resultado (possivelmente parcial).
 
-        Por exemplo:
-            - Ao se ler um arquivo .csv com pandas, algumas linhas do arquivo serão ignoradas pois apresentam erro.
-            - Ao se processar uma lista de CPFs, alguns foram ignorados pois o dígito verificador não está correto.
-
-        - msg pode ser uma string ou um dataframe
+        - id: identificador do ponto de chamada (obrigatório).
+        - EnviarServidorMsgs: se True, envia ao servidor (padrão False).
+        - msg pode ser uma string ou um dataframe.
         """
         msg = self.MsgToString(msg)
         if(self.QTextBrowser_connected):
@@ -424,17 +442,19 @@ class Class_Mensagem_Log():
             else:
                 self.servidor_msgs_NotSetedMsError()
 
-    def info(self, msg, id: 'id_msg', EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
-        """ Mostra uma mensagem de INFO.
-        INFO é uma mensagem de aviso ao usuário.
-        Diferente do WARNING, não se espera nenhuma especificidade no resultado que será/foi gerado
+    def info(self, msg, id: 'id_msg' = None, EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
+        """Loga uma mensagem informativa ao usuário.
 
-        Por exemplo:
-            - Avisa ao usuário que foi feito login no servidor;
-            - Ao se processar um conjunto de arquivos, lista qual o nome dos arquivos que serão processados
+        Uso: confirmações de ações concluídas, listagem de itens processados etc.
+        Diferente de WARNING, não indica nenhuma especificidade no resultado gerado.
 
-        - msg pode ser uma string ou um dataframe
+        - id: identificador do ponto de chamada. Se omitido, capturado automaticamente com frequencia=0.
+        - EnviarServidorMsgs: se True, envia ao servidor (padrão False).
+        - msg pode ser uma string ou um dataframe.
         """
+        if id is None:
+            frame = inspect.currentframe().f_back
+            id = id_msg(frequencia_seg=0, line=frame.f_lineno, file=frame.f_code.co_filename)
         msg = self.MsgToString(msg)
         if(self.QTextBrowser_connected):
             self.PrintMsgToQTextBrowser(msg,"INFO")
@@ -446,18 +466,19 @@ class Class_Mensagem_Log():
             else:
                 self.servidor_msgs_NotSetedMsError()
 
-    def debug(self, msg, id: 'id_msg', EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
-        """ Mostra uma mensagem de DEBUG.
-        DEBUG é uma mensagem de aviso ao desenvolvedor do programa.
-        Diferente do INFO, a mensagem não é mostrada ao usuário, só se o programa estiver rodando em modo DEBUG.
-        Se o programa não estiver em modo DEBUG, a mensagem será apenas gravada no arquivo de log.
+    def debug(self, msg, id: 'id_msg' = None, EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
+        """Loga uma mensagem de depuração, visível apenas em modo DEBUG.
 
-        Por exemplo:
-            - Avisa ao desenvolvedor qual a versão do windows;
-            - Avisa ao desenvolvedor quais foram os inputs dado pelo usuário;
+        Uso: valores intermediários, versão do ambiente, inputs recebidos etc.
+        Diferente de INFO, não é exibida ao usuário final fora do modo DEBUG.
 
-        - msg pode ser uma string ou um dataframe
+        - id: identificador do ponto de chamada. Se omitido, capturado automaticamente com frequencia=0.
+        - EnviarServidorMsgs: se True, envia ao servidor (padrão False).
+        - msg pode ser uma string ou um dataframe.
         """
+        if id is None:
+            frame = inspect.currentframe().f_back
+            id = id_msg(frequencia_seg=0, line=frame.f_lineno, file=frame.f_code.co_filename)
         msg = self.MsgToString(msg)
         if(self.QTextBrowser_connected and DebugModeTester.__debug_mode__):
             self.PrintMsgToQTextBrowser(msg,"DEBUG")

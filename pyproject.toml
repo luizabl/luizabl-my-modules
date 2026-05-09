@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "luizabl-my-modules"
-version = "1.8.0"
+version = "1.10.0"
 description = "Módulos utilitários reutilizáveis para projetos Python"
 requires-python = ">=3.10"
 dependencies = []
