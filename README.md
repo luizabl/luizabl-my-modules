@@ -8,10 +8,20 @@ Módulos utilitários reutilizáveis para projetos Python.
 pip install git+https://github.com/luizabl/luizabl-my-modules.git
 ```
 
-Com suporte a notificações via Pushbullet:
+Com dependências opcionais:
 
 ```bash
+# Suporte a pandas (DataFrame_Methodes)
+pip install "git+https://github.com/luizabl/luizabl-my-modules.git#egg=luizabl-my-modules[pandas]"
+
+# Suporte a notificações via Pushbullet
 pip install "git+https://github.com/luizabl/luizabl-my-modules.git#egg=luizabl-my-modules[pushbullet]"
+
+# Suporte a PyQt5
+pip install "git+https://github.com/luizabl/luizabl-my-modules.git#egg=luizabl-my-modules[qt]"
+
+# Tudo junto
+pip install "git+https://github.com/luizabl/luizabl-my-modules.git#egg=luizabl-my-modules[pandas,pushbullet,qt]"
 ```
 
 ## Módulos
