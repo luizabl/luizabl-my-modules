@@ -4,14 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "luizabl-my-modules"
-version = "1.0.0"
+version = "1.8.0"
 description = "Módulos utilitários reutilizáveis para projetos Python"
 requires-python = ">=3.10"
-dependencies = [
-    "pandas>=2.0.0",
-]
+dependencies = []
 
 [project.optional-dependencies]
+pandas = ["pandas>=2.0.0"]
 pushbullet = ["pushbullet.py>=0.12.0"]
 qt = ["PyQt5>=5.15.0"]
 
