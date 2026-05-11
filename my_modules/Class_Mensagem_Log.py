@@ -379,14 +379,18 @@ class Class_Mensagem_Log():
             else:
                 self.servidor_msgs_NotSetedMsError(False)
 
-    def critical(self, msg, id: 'id_msg', EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
+    def critical(self, msg, id: 'id_msg' = None, EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
         """ Mostra uma mensagem de erro CRITICAL. O programa não continuará a tarefa.
         CRITICAL é um problema gerado provavelmente porque algo inesperado aconteceu.
 
         Indica um bug ou necessidade de melhoria no código
 
+        - id: identificador do ponto de chamada. Se omitido e EnviarServidorMsgs=True, capturado automaticamente.
         - msg pode ser uma string ou um dataframe
         """
+        if id is None and EnviarServidorMsgs:
+            frame = inspect.currentframe().f_back
+            id = id_msg(frequencia_seg=0, line=frame.f_lineno, file=frame.f_code.co_filename)
         msg = self.MsgToString(msg)
         if(self.QTextBrowser_connected):
             self.PrintMsgToQTextBrowser(msg,"CRITICAL")
@@ -399,7 +403,7 @@ class Class_Mensagem_Log():
             else:
                 self.servidor_msgs_NotSetedMsError()
 
-    def erro(self, msg, id: 'id_msg', EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
+    def erro(self, msg, id: 'id_msg' = None, EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
         """ Mostra uma mensagem de ERRO. O programa não continuará a tarefa.
         ERRO é um problema gerado devido ao mal uso do programa pelo usuário.
         Por exemplo o usuário coloca uma string vazia em um formulário que deveria ter uma string preenchida.
@@ -407,8 +411,12 @@ class Class_Mensagem_Log():
 
         Indica que o usuário deve corrigir o input que ele deu ao programa
 
+        - id: identificador do ponto de chamada. Se omitido e EnviarServidorMsgs=True, capturado automaticamente.
         - msg pode ser uma string ou um dataframe
         """
+        if id is None and EnviarServidorMsgs:
+            frame = inspect.currentframe().f_back
+            id = id_msg(frequencia_seg=0, line=frame.f_lineno, file=frame.f_code.co_filename)
         msg = self.MsgToString(msg)
         if(self.QTextBrowser_connected):
             self.PrintMsgToQTextBrowser(msg,"ERRO")
@@ -420,16 +428,19 @@ class Class_Mensagem_Log():
             else:
                 self.servidor_msgs_NotSetedMsError()
 
-    def warning(self, msg, id: 'id_msg', EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
+    def warning(self, msg, id: 'id_msg' = None, EnviarServidorMsgs=False, ForcarEnvioServidorMsgs=False):
         """Loga um alerta: situação não ideal, mas o processamento continua e gera resultado.
 
         Uso: linhas ignoradas em CSV com erros, CPFs com dígito inválido descartados etc.
         Diferente de ERRO e CRITICAL, o programa entrega um resultado (possivelmente parcial).
 
-        - id: identificador do ponto de chamada (obrigatório).
+        - id: identificador do ponto de chamada. Se omitido e EnviarServidorMsgs=True, capturado automaticamente.
         - EnviarServidorMsgs: se True, envia ao servidor (padrão False).
         - msg pode ser uma string ou um dataframe.
         """
+        if id is None and EnviarServidorMsgs:
+            frame = inspect.currentframe().f_back
+            id = id_msg(frequencia_seg=0, line=frame.f_lineno, file=frame.f_code.co_filename)
         msg = self.MsgToString(msg)
         if(self.QTextBrowser_connected):
             self.PrintMsgToQTextBrowser(msg,"WARNING")
