@@ -12,7 +12,7 @@ if (DebugModeTester.__version__ != VERSION_DEBUGMODETESTER_COMPATIBLE):
     raise Exception(f"Versão incompatível: DebugModeTester.__version__ {DebugModeTester.__version__}. Versão compatível: {VERSION_DEBUGMODETESTER_COMPATIBLE}")
 
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 #------------------------------------------------------------------------------------
 #                                                                                   -
@@ -66,10 +66,12 @@ class Telegram_Class():
         self.__token   = token
         self.__chat_id = chat_id
 
-    def TelegramSendMsg(self, msg: str, ForcarEnvio: bool = False):
+    def TelegramSendMsg(self, msg: str, ForcarEnvio: bool = False, parse_mode: str | None = None):
         '''
         Envia uma mensagem via Telegram desde que passado o tempo IntervaloMinimo_seg
         desde o último envio (controle global, independente de motivo).
+
+        parse_mode: opcional. Valores aceitos pela API do Telegram: "Markdown", "MarkdownV2", "HTML".
         '''
         if not self.TelegramIsSet():
             if not self.__enviou_alerta_nao_configurado:
@@ -82,7 +84,10 @@ class Telegram_Class():
 
         segundos = (dt.datetime.now() - self.__UltimoEnvio).total_seconds()
         if segundos >= self.__config["IntervaloMinimo_seg"] or ForcarEnvio:
-            data = urlencode({"chat_id": self.__chat_id, "text": msg}).encode()
+            payload = {"chat_id": self.__chat_id, "text": msg}
+            if parse_mode is not None:
+                payload["parse_mode"] = parse_mode
+            data = urlencode(payload).encode()
             urlopen(
                 f"https://api.telegram.org/bot{self.__token}/sendMessage",
                 data=data,
