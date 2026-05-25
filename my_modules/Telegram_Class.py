@@ -12,7 +12,7 @@ if (DebugModeTester.__version__ != VERSION_DEBUGMODETESTER_COMPATIBLE):
     raise Exception(f"Versão incompatível: DebugModeTester.__version__ {DebugModeTester.__version__}. Versão compatível: {VERSION_DEBUGMODETESTER_COMPATIBLE}")
 
 
-__version__ = "1.0.1"
+__version__ = "1.14.0"
 
 #------------------------------------------------------------------------------------
 #                                                                                   -
