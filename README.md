@@ -118,7 +118,9 @@ from my_modules import Telegram_Class
 
 tg = Telegram_Class.Telegram_Class()  # auto-configura via TELEGRAM_TOKEN e TELEGRAM_CHAT_ID
 tg.TelegramSendMsg("Mensagem")
-tg.TelegramSendMsg("Urgente", ForcarEnvio=True)  # ignora o intervalo mínimo
+tg.TelegramSendMsg("Urgente", ForcarEnvio=True)       # ignora o intervalo mínimo
+tg.TelegramSendMsg("*Negrito*", parse_mode="Markdown") # formatação: "Markdown", "MarkdownV2" ou "HTML"
+# Se o parse_mode for rejeitado pela API (ex: underscore solto), a mensagem é reenviada sem formatação.
 ```
 
 ### `healthcheck_ping`
