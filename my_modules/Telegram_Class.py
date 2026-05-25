@@ -5,6 +5,7 @@ import logging
 import os
 from urllib.request import urlopen
 from urllib.parse import urlencode
+from urllib.error import HTTPError
 
 
 VERSION_DEBUGMODETESTER_COMPATIBLE = "1.0.0"
@@ -12,7 +13,7 @@ if (DebugModeTester.__version__ != VERSION_DEBUGMODETESTER_COMPATIBLE):
     raise Exception(f"Versão incompatível: DebugModeTester.__version__ {DebugModeTester.__version__}. Versão compatível: {VERSION_DEBUGMODETESTER_COMPATIBLE}")
 
 
-__version__ = "1.14.0"
+__version__ = "1.15.0"
 
 #------------------------------------------------------------------------------------
 #                                                                                   -
@@ -84,13 +85,27 @@ class Telegram_Class():
 
         segundos = (dt.datetime.now() - self.__UltimoEnvio).total_seconds()
         if segundos >= self.__config["IntervaloMinimo_seg"] or ForcarEnvio:
-            payload = {"chat_id": self.__chat_id, "text": msg}
-            if parse_mode is not None:
-                payload["parse_mode"] = parse_mode
-            data = urlencode(payload).encode()
+            self.__send(msg, parse_mode)
+            self.__UltimoEnvio = dt.datetime.now()
+
+    def __send(self, msg: str, parse_mode: str | None):
+        payload = {"chat_id": self.__chat_id, "text": msg}
+        if parse_mode is not None:
+            payload["parse_mode"] = parse_mode
+        try:
             urlopen(
                 f"https://api.telegram.org/bot{self.__token}/sendMessage",
-                data=data,
+                data=urlencode(payload).encode(),
                 timeout=5,
             )
-            self.__UltimoEnvio = dt.datetime.now()
+        except HTTPError as e:
+            if e.code == 400 and parse_mode is not None:
+                self.logger.warning(f"parse_mode='{parse_mode}' rejeitado pela API — reenviando sem formatação.")
+                del payload["parse_mode"]
+                urlopen(
+                    f"https://api.telegram.org/bot{self.__token}/sendMessage",
+                    data=urlencode(payload).encode(),
+                    timeout=5,
+                )
+            else:
+                raise
