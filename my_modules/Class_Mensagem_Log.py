@@ -21,6 +21,7 @@ import sys
 import inspect
 import datetime as dt
 import time
+from typing import Optional
 try:
     # PyQt5==5.15.10
     from PyQt5.QtWidgets import QTextBrowser, QWidget, QStatusBar
@@ -44,7 +45,7 @@ if (DebugModeTester.__version__ != VERSION_DEBUGMODETESTER_COMPATIBLE):
 
 try:
     from . import Telegram_Class
-    VERSION_TELEGRAMCLASS_COMPATIBLE = "1.0.0"
+    VERSION_TELEGRAMCLASS_COMPATIBLE = "1.16.0"
     if (Telegram_Class.__version__ != VERSION_TELEGRAMCLASS_COMPATIBLE):
         raise Exception(f"Versão incompatível: Telegram_Class.__version__ {Telegram_Class.__version__}. Versão compatível: {VERSION_TELEGRAMCLASS_COMPATIBLE}")
     TELEGRAM_IMPORTADO = True
@@ -61,7 +62,7 @@ except Exception as erro:
     PUSHBULLET_IMPORTADO = False
 
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 from .enum_timeframes import PERIOD_H1
 
@@ -141,6 +142,8 @@ class Class_Mensagem_Log():
     SERVIDOR_MSGS_ultima_msg_enviada_time = 0
     SERVIDOR_MSGS_tempo_minimo_entre_envios_s = 5
     ultimo_envio_msg_exception_ids: dict = {}  # dict[str, datetime]
+    _avisos_configuracao_telegram_emitidos: set[str] = set()
+    _aviso_fallback_telegram_emitido = False
 
     def __init__(self,__name__:str=None):
         '''
@@ -171,6 +174,56 @@ class Class_Mensagem_Log():
         partes.append(f"[{id.id()}]")
         return "\n".join(partes)
 
+    @staticmethod
+    def _obter_parte_faltante_telegram() -> Optional[str]:
+        """Retorna a credencial ausente quando o Telegram esta parcialmente configurado."""
+        telegram_token = os.environ.get("TELEGRAM_TOKEN", "")
+        telegram_chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+        if bool(telegram_token) == bool(telegram_chat_id):
+            return None
+        if not telegram_token:
+            return "TELEGRAM_TOKEN"
+        return "TELEGRAM_CHAT_ID"
+
+    def _enviar_pushbullet(self, msg: str, forcar_envio: bool) -> bool:
+        """Envia pelo Pushbullet e informa se havia um canal configurado."""
+        if (not PUSHBULLET_IMPORTADO or self.__servidor_msgs_pushbullet is None
+                or not self.__servidor_msgs_pushbullet.PushbulletIsSet()):
+            return False
+        try:
+            self.__servidor_msgs_pushbullet.PushbulletSendMsg(msg, forcar_envio)
+            return True
+        except Exception as erro:
+            if "pushbullet_pro_required" in str(erro):
+                self.__servidor_msgs_pushbullet._Pushbullet_Class__Pushbulletmotor = None
+                if time.time() - self.ultima_msg_erro > 60 * 60:
+                    print(erro)
+                return False
+            raise
+
+    def _avisar_configuracao_telegram_parcial(self, parte_faltante: str) -> None:
+        """Registra e notifica uma unica vez a credencial ausente do Telegram."""
+        if parte_faltante in Class_Mensagem_Log._avisos_configuracao_telegram_emitidos:
+            return
+        Class_Mensagem_Log._avisos_configuracao_telegram_emitidos.add(parte_faltante)
+        mensagem = f"O {parte_faltante} para o envio ao Telegram não está presente no env!"
+        self.logger.warning(mensagem)
+        self._enviar_pushbullet(mensagem, forcar_envio=True)
+
+    def _avisar_fallback_telegram(self, erro_telegram: Exception, fallback_enviado: bool) -> None:
+        """Registra uma unica vez a falha do Telegram e o estado do fallback."""
+        if Class_Mensagem_Log._aviso_fallback_telegram_emitido:
+            return
+        Class_Mensagem_Log._aviso_fallback_telegram_emitido = True
+        motivo = str(erro_telegram) or repr(erro_telegram)
+        if fallback_enviado:
+            mensagem = f"Erro no envio ao Telegram: {motivo}. Foi feito fallback para o Pushbullet."
+        else:
+            mensagem = f"Erro no envio ao Telegram: {motivo}. Pushbullet não estava disponível para fallback."
+        self.logger.error(mensagem)
+        if fallback_enviado:
+            self._enviar_pushbullet(mensagem, forcar_envio=True)
+
     def servidor_msgs_SendMsg(self, msg: str, ForcarEnvio: bool = False):
         ''' Envia uma mensagem via servidor de mensagens. Prioriza Telegram; usa Pushbullet como fallback '''
         if (time.time() - Class_Mensagem_Log.SERVIDOR_MSGS_ultima_msg_enviada_time
@@ -179,28 +232,25 @@ class Class_Mensagem_Log():
 
         Class_Mensagem_Log.SERVIDOR_MSGS_ultima_msg_enviada_time = time.time()
 
+        parte_faltante = self._obter_parte_faltante_telegram()
+        if parte_faltante is not None:
+            self._enviar_pushbullet(msg, ForcarEnvio)
+            self._avisar_configuracao_telegram_parcial(parte_faltante)
+            return
+
         # Primário: Telegram
         if (TELEGRAM_IMPORTADO and self.__servidor_msgs_telegram is not None
                 and self.__servidor_msgs_telegram.TelegramIsSet()):
             try:
                 self.__servidor_msgs_telegram.TelegramSendMsg(msg, ForcarEnvio)
                 return
-            except Exception:
-                pass  # cai no fallback
+            except Exception as erro_telegram:
+                fallback_enviado = self._enviar_pushbullet(msg, forcar_envio=True)
+                self._avisar_fallback_telegram(erro_telegram, fallback_enviado)
+                return
 
         # Fallback: Pushbullet
-        if (PUSHBULLET_IMPORTADO and self.__servidor_msgs_pushbullet is not None
-                and self.__servidor_msgs_pushbullet.PushbulletIsSet()):
-            try:
-                self.__servidor_msgs_pushbullet.PushbulletSendMsg(msg, ForcarEnvio)
-            except Exception as e:
-                if (e.args[0].find("pushbullet_pro_required") >= 0):
-                    # Extrapolou o limite de envios mensais do pushbullet — desabilita
-                    self.__servidor_msgs_pushbullet._Pushbullet_Class__Pushbulletmotor = None
-                    if time.time() - self.ultima_msg_erro > 60 * 60:
-                        print(e)
-                    return
-                raise e
+        self._enviar_pushbullet(msg, ForcarEnvio)
 
     def servidor_msgs_IsSet(self) -> bool:
         ''' Verifica se algum servidor de mensagens está configurado (Telegram ou Pushbullet) '''

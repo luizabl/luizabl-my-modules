@@ -76,6 +76,24 @@ O servidor de mensagens é auto-configurado via variáveis de ambiente:
 - `PushBullet_APIKEY` — fallback
 - `CLASS_MSG_APP_NAME` — nome da aplicação exibido nas mensagens enviadas
 
+Se apenas uma credencial do Telegram estiver presente, o logger registra uma vez
+por processo qual variável está ausente e envia o aviso pelo Pushbullet, quando
+disponível. Se o Telegram falhar com as duas credenciais configuradas, o motivo
+do erro e o fallback para Pushbullet também são registrados e notificados uma
+única vez por processo.
+
+Durante a implementação de mudanças em `my_modules/Class_Mensagem_Log.py`, não
+execute os testes de envio real para Telegram e Pushbullet, para não poluir os
+canais de mensagens. Porém, antes de criar um commit que modifique
+`Class_Mensagem_Log.py`, execute explicitamente esses dois testes para confirmar
+que os envios continuam funcionando. No PowerShell, use:
+
+```powershell
+$env:RUN_REAL_MESSAGE_TESTS = "1"
+.\.venv\Scripts\python.exe -m pytest tests\Class_Mensagem_Log\integracao -q
+Remove-Item Env:RUN_REAL_MESSAGE_TESTS
+```
+
 ### `Class_Configuracoes`
 Armazenamento e leitura de configurações em arquivo JSON.
 
