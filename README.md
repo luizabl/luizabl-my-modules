@@ -172,6 +172,10 @@ HEALTHCHECK_TOKEN=replace-with-the-healthcheck-token
 | `HEALTHCHECK_URL` | `healthcheck_ping` | URL base do servidor de Healthcheck |
 | `HEALTHCHECK_TOKEN` | `healthcheck_ping` | Token de autenticacao do Healthcheck |
 
+O teste de integracao do Healthcheck envia um ping real para `SERVICO_TESTE` apenas
+quando `HEALTHCHECK_URL` e `HEALTHCHECK_TOKEN` estiverem definidos; sem essas
+variaveis, ele fica marcado como `SKIPPED`.
+
 ## Testes
 
 ```bash
