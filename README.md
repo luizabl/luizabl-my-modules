@@ -159,6 +159,19 @@ resposta = Healthcheck_ping("NOME_DO_SERVICO")
 | `PushBullet_APIKEY`    | `Pushbullet_Class`    | API Key do Pushbullet                              |
 | `CLASS_MSG_APP_NAME`   | `Class_Mensagem_Log`  | Nome da aplicação exibido nas mensagens enviadas   |
 
+Para configurar o `healthcheck_ping`, defina estas variaveis no `.env` da aplicacao
+ou no ambiente do processo:
+
+```dotenv
+HEALTHCHECK_URL=http://healthcheck.example:8000
+HEALTHCHECK_TOKEN=replace-with-the-healthcheck-token
+```
+
+| Variavel | Modulo | Descricao |
+|----------|--------|-----------|
+| `HEALTHCHECK_URL` | `healthcheck_ping` | URL base do servidor de Healthcheck |
+| `HEALTHCHECK_TOKEN` | `healthcheck_ping` | Token de autenticacao do Healthcheck |
+
 ## Testes
 
 ```bash
