@@ -30,3 +30,5 @@ htmlcov/
 # Logs
 *.log
 app.log
+logs_historicos/
+/uv.lock

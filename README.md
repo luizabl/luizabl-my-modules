@@ -71,6 +71,24 @@ A linha `[CLASS_MSG_APP_NAME]` é omitida se a variável de ambiente não estive
 
 O parâmetro `id: id_msg` é obrigatório em todos os métodos e controla a frequência mínima de reenvio para o servidor de mensagens (em segundos).
 
+O arquivo `app.log` usa um handler compartilhado entre os loggers do processo.
+Na virada do dia, o arquivo atual é fechado e substituído imediatamente; o
+conteúdo encerrado é compactado em segundo plano como
+`logs_historicos/app-AAAA-MM-DD.log.gz`. Compactações interrompidas ficam com
+extensão `.pending` e são retomadas na próxima inicialização.
+
+Para consultar as últimas linhas sem carregar o arquivo inteiro:
+
+```python
+from my_modules.log_historico import ler_log_aplicacao
+
+atual = ler_log_aplicacao(quantidade=50)
+historico = ler_log_aplicacao(quantidade=50, data="2026-08-09")
+```
+
+`quantidade` deve estar entre 1 e 500. A leitura histórica aceita apenas datas
+no formato `YYYY-MM-DD` e nunca recebe um caminho fornecido pelo cliente.
+
 O servidor de mensagens é auto-configurado via variáveis de ambiente:
 - `TELEGRAM_TOKEN` + `TELEGRAM_CHAT_ID` — primário
 - `PushBullet_APIKEY` — fallback

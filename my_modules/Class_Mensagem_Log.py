@@ -22,6 +22,7 @@ import inspect
 import datetime as dt
 import time
 from typing import Optional
+from .log_historico import obter_handler_arquivo_compartilhado
 try:
     # PyQt5==5.15.10
     from PyQt5.QtWidgets import QTextBrowser, QWidget, QStatusBar
@@ -62,7 +63,7 @@ except Exception as erro:
     PUSHBULLET_IMPORTADO = False
 
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 from .enum_timeframes import PERIOD_H1
 
@@ -298,13 +299,17 @@ class Class_Mensagem_Log():
             # Create handlers
             # Default handler - Print messages to console, show mensage to PYQT5 elements and write to log file
             if (DebugModeTester.__debug_mode__):
-                f_handler = logging.FileHandler(DebugModeTester.application_path+'\\app.log')
+                f_handler = obter_handler_arquivo_compartilhado(
+                    DebugModeTester.application_path+'\\app.log'
+                )
                 f_handler.setLevel("DEBUG")
                 # DEBUG handler - Only work in debug mode
                 d_handler = logging.StreamHandler()
                 d_handler.setLevel("DEBUG")
             else:
-                f_handler = logging.FileHandler(DebugModeTester.application_path+'\\app.log')
+                f_handler = obter_handler_arquivo_compartilhado(
+                    DebugModeTester.application_path+'\\app.log'
+                )
                 f_handler.setLevel("DEBUG")
                 # DEBUG handler - Only work in debug mode
                 d_handler = logging.StreamHandler()
