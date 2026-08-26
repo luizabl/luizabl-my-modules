@@ -168,6 +168,10 @@ from my_modules.healthcheck_ping import Healthcheck_ping
 resposta = Healthcheck_ping("NOME_DO_SERVICO")
 ```
 
+Cada envio faz no maximo duas tentativas imediatas. Uma resposta `OK` em
+qualquer tentativa confirma o ping; somente duas falhas retornam erro, com os
+motivos das duas tentativas no texto retornado.
+
 ## Variáveis de ambiente
 
 | Variável               | Módulo                | Descrição                                          |
