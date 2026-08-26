@@ -44,8 +44,10 @@ def Healthcheck_ping(nome_servido: str) -> str:
     for _ in range(PING_MAX_ATTEMPTS):
         try:
             request = Request(
-                f"{url_dest}/ping/{quote(nome_servido, safe='')}?token={quote(token, safe='')}",
+                f"{url_dest}/ping/{quote(nome_servido, safe='')}",
                 data=b"",
+                headers={"X-Healthcheck-Token": token},
+                method="POST",
             )
             response = urlopen(request, timeout=PING_TIMEOUT_SECONDS)
             response_text = response.read().decode()

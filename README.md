@@ -185,14 +185,14 @@ Para configurar o `healthcheck_ping`, defina estas variaveis no `.env` da aplica
 ou no ambiente do processo:
 
 ```dotenv
-HEALTHCHECK_URL=http://healthcheck.example:8000
+HEALTHCHECK_URL=https://www.criciumajogos.com.br/healthcheck
 HEALTHCHECK_TOKEN=replace-with-the-healthcheck-token
 ```
 
 | Variavel | Modulo | Descricao |
 |----------|--------|-----------|
 | `HEALTHCHECK_URL` | `healthcheck_ping` | URL base do servidor de Healthcheck |
-| `HEALTHCHECK_TOKEN` | `healthcheck_ping` | Token de autenticacao do Healthcheck |
+| `HEALTHCHECK_TOKEN` | `healthcheck_ping` | Token enviado somente no header HTTPS `X-Healthcheck-Token` |
 
 O teste de integracao do Healthcheck envia um ping real para `SERVICO_TESTE` apenas
 quando `HEALTHCHECK_URL` e `HEALTHCHECK_TOKEN` estiverem definidos; sem essas

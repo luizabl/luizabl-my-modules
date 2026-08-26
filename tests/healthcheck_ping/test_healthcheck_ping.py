@@ -29,9 +29,8 @@ def test_ping_usa_configuracao_do_ambiente_na_primeira_tentativa(
         assert Healthcheck_ping("Servico teste") == "OK"
 
     request = mock_urlopen.call_args.args[0]
-    assert request.full_url == (
-        "http://healthcheck.test:8000/ping/Servico%20teste?token=token%20de%20teste"
-    )
+    assert request.full_url == "http://healthcheck.test:8000/ping/Servico%20teste"
+    assert request.get_header("X-healthcheck-token") == "token de teste"
     assert mock_urlopen.call_args.kwargs["timeout"] == PING_TIMEOUT_SECONDS
     assert mock_urlopen.call_count == 1
 
@@ -123,4 +122,6 @@ def test_ping_carrega_configuracao_do_arquivo_dotenv(
     ) as mock_urlopen:
         assert Healthcheck_ping("Servico") == "OK"
 
-    assert "token=token-de-teste" in mock_urlopen.call_args.args[0].full_url
+    request = mock_urlopen.call_args.args[0]
+    assert "token=" not in request.full_url
+    assert request.get_header("X-healthcheck-token") == "token-de-teste"
